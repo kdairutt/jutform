@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.php text eol=lf
+
+seeds/seeder-amd64 binary
+seeds/seeder-arm64 binary
+
+frontend/dist/assets/*   binary
+frontend/dist/index.html -diff
+frontend/dist/icons.svg  -diff
+frontend/dist/favicon.svg -diff

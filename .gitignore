@@ -1,0 +1,13 @@
+vendor/
+!seeds/seeder-amd64
+!seeds/seeder-arm64
+.phpunit.cache/
+.env
+*.swp
+*.swo
+.idea/
+.vscode/
+.DS_Store
+mysql_data/
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep

@@ -1,0 +1,190 @@
+services:
+  nginx:
+    build:
+      context: ./docker/nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend/dist:/var/www/frontend:ro
+      - ./backend/public:/var/www/backend/public:ro
+    depends_on:
+      - php-fpm
+    networks:
+      - jutform
+
+  php-fpm:
+    build:
+      context: ./docker/php
+    volumes:
+      - ./backend:/var/www/backend
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jutform
+      - DB_USER=jutform
+      - DB_PASS=jutform_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - EXTERNAL_API_URL=http://mock-api:8888
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jutform
+
+  worker:
+    build:
+      context: ./docker/php
+    volumes:
+      - ./backend:/var/www/backend
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: ["php", "/var/www/backend/src/Workers/worker.php"]
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jutform
+      - DB_USER=jutform
+      - DB_PASS=jutform_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - EXTERNAL_API_URL=http://mock-api:8888
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+    networks:
+      - jutform
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_secret
+      - MYSQL_DATABASE=jutform
+      - MYSQL_USER=jutform
+      - MYSQL_PASSWORD=jutform_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command:
+      - --sql-mode=NO_ENGINE_SUBSTITUTION
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/log/mysql/slow.log
+      - --long-query-time=1
+      - --innodb-buffer-pool-size=8M
+      - --innodb-buffer-pool-chunk-size=1M
+      - --innodb-flush-method=O_DIRECT
+      - --sort-buffer-size=32K
+      - --join-buffer-size=32K
+      - --read-buffer-size=8K
+      - --read-rnd-buffer-size=8K
+      - --tmp-table-size=1M
+      - --max-heap-table-size=1M
+      - --table-open-cache=32
+      - --local-infile=1
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-doublewrite=0
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - jutform
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - jutform
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - jutform
+
+  mock-api:
+    build:
+      context: ./docker/mock-api
+    environment:
+      - DEFAULT_DELAY_MS=5000
+    networks:
+      - jutform
+
+  payment-gateway:
+    build:
+      context: ./docker/mock-api
+    environment:
+      - DEFAULT_DELAY_MS=5000
+    networks:
+      - jutform
+
+  seeder:
+    build:
+      context: .
+      dockerfile: docker/seeder/Dockerfile
+    volumes:
+      - ./backend:/var/www/backend
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jutform
+      - DB_USER=jutform
+      - DB_PASS=jutform_secret
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - jutform
+
+  migrator:
+    build:
+      context: ./docker/php
+    volumes:
+      - ./backend:/var/www/backend
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: ["php", "/var/www/backend/migrations/runner.php"]
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jutform
+      - DB_USER=jutform
+      - DB_PASS=jutform_secret
+    depends_on:
+      mysql:
+        condition: service_healthy
+      seeder:
+        condition: service_completed_successfully
+    networks:
+      - jutform
+    restart: "no"
+
+volumes:
+  mysql_data:
+
+networks:
+  jutform:
+    driver: bridge

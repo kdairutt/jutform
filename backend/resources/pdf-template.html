@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{form_name}}</title>
+  <style>
+    body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>{{form_name}}</h1>
+  <p>Generated at: {{generated_at}}</p>
+  <p>Submission count: {{submission_count}}</p>
+  <table>
+    <thead><tr><th>Row</th><th>Data</th></tr></thead>
+    <tbody>
+      {{rows}}
+    </tbody>
+  </table>
+</body>
+</html>
