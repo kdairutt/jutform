@@ -11,3 +11,4 @@ vendor/
 mysql_data/
 backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
+.claude

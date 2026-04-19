@@ -61,6 +61,43 @@ class FeatureController
 
     public function analyticsSummary(Request $request): void
     {
-        Response::error('Not implemented', 501);
+        $pdo = \JutForm\Core\Database::getInstance();
+
+        $totals = $pdo->query(
+            'SELECT SUM(views) AS total_views,
+                    SUM(submissions) AS total_submissions,
+                    ROUND(AVG(avg_fill_time), 2) AS avg_fill_time_seconds,
+                    MAX(date) AS latest_entry_date
+             FROM form_metrics'
+        )->fetch(\PDO::FETCH_ASSOC);
+
+        $peak = $pdo->query(
+            'SELECT date AS peak_day, SUM(submissions) AS peak_day_submissions
+             FROM form_metrics
+             GROUP BY date
+             ORDER BY peak_day_submissions DESC
+             LIMIT 1'
+        )->fetch(\PDO::FETCH_ASSOC);
+
+        $countries = $pdo->query(
+            'SELECT country_code, SUM(submissions) AS submissions
+             FROM form_metrics
+             GROUP BY country_code
+             ORDER BY submissions DESC
+             LIMIT 3'
+        )->fetchAll(\PDO::FETCH_ASSOC);
+
+        Response::json([
+            'total_views'           => (int) ($totals['total_views'] ?? 0),
+            'total_submissions'     => (int) ($totals['total_submissions'] ?? 0),
+            'avg_fill_time_seconds' => round((float) ($totals['avg_fill_time_seconds'] ?? 0), 2),
+            'peak_day'              => $peak['peak_day'] ?? null,
+            'peak_day_submissions'  => (int) ($peak['peak_day_submissions'] ?? 0),
+            'latest_entry_date'     => $totals['latest_entry_date'] ?? null,
+            'top_countries'         => array_map(
+                static fn($r) => ['country_code' => $r['country_code'], 'submissions' => (int) $r['submissions']],
+                $countries
+            ),
+        ]);
     }
 }
