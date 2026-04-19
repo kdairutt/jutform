@@ -56,7 +56,68 @@ class FeatureController
 
     public function createPayment(Request $request): void
     {
-        Response::error('Not implemented', 501);
+        $uid = \JutForm\Core\RequestContext::$currentUserId;
+        if ($uid === null) {
+            Response::error('Unauthorized', 401);
+        }
+
+        $body = $request->jsonBody();
+        $amount = isset($body['amount']) ? (float) $body['amount'] : null;
+        if ($amount === null || $amount <= 0) {
+            Response::error('amount is required', 400);
+        }
+
+        $apiKey = \JutForm\Models\ConfigRepository::get('payment_api_key') ?? '';
+        $gw = 'http://payment-gateway:8888';
+        $headers = "Authorization: Bearer {$apiKey}\r\nAccept: application/json\r\n";
+
+        // Step 1 — fetch salt
+        $saltRaw = @file_get_contents($gw . '/salt', false, stream_context_create([
+            'http' => ['method' => 'GET', 'header' => $headers, 'timeout' => 15],
+        ]));
+        if ($saltRaw === false) {
+            Response::raw('{"error":"payment gateway unreachable"}', 503, ['Content-Type' => 'application/json']);
+        }
+        $saltData = json_decode((string) $saltRaw, true);
+        $salt = (string) ($saltData['salt'] ?? '');
+
+        // Step 2 — sign and charge
+        $datetime = gmdate('Y-m-d H:i:s');
+        $hash = hash('sha256', $uid . '|' . $amount . '|' . $datetime . $salt);
+
+        $payload = json_encode(['hash' => $hash, 'user_id' => $uid, 'amount' => $amount, 'datetime' => $datetime]);
+        $chargeRaw = @file_get_contents($gw . '/charge', false, stream_context_create([
+            'http' => [
+                'method'  => 'POST',
+                'header'  => $headers . "Content-Type: application/json\r\n",
+                'content' => $payload,
+                'timeout' => 15,
+            ],
+            'ssl' => ['ignore_errors' => true],
+        ]));
+        if ($chargeRaw === false) {
+            Response::raw('{"error":"payment gateway unreachable"}', 503, ['Content-Type' => 'application/json']);
+        }
+        $result = json_decode((string) $chargeRaw, true);
+        $status = (string) ($result['status'] ?? 'error');
+        $txnId  = $result['transaction_id'] ?? null;
+
+        \JutForm\Core\Database::getInstance()->prepare(
+            'INSERT INTO payments (user_id, amount, transaction_id, status, gateway_hash, paid_at)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        )->execute([$uid, $amount, $txnId, in_array($status, ['approved','declined'], true) ? $status : 'error', $hash, $datetime]);
+
+        if ($status === 'approved') {
+            Response::json(['transaction_id' => $txnId, 'status' => 'approved']);
+        } elseif ($status === 'declined') {
+            Response::raw(
+                json_encode(['status' => 'declined', 'reason' => $result['reason'] ?? '']),
+                402,
+                ['Content-Type' => 'application/json']
+            );
+        } else {
+            Response::raw('{"error":"gateway error"}', 503, ['Content-Type' => 'application/json']);
+        }
     }
 
     public function analyticsSummary(Request $request): void
