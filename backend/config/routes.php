@@ -12,6 +12,7 @@ use JutForm\Controllers\UserController;
 use JutForm\Controllers\WebhookController;
 use JutForm\Core\Router;
 use JutForm\Middleware\AuthMiddleware;
+use JutForm\Middleware\RateLimitMiddleware;
 
 return static function (Router $router): void {
     $router->post('/api/auth/login', [UserController::class, 'login']);
@@ -28,7 +29,7 @@ return static function (Router $router): void {
 
     $router->get('/api/forms/{id}/submissions/export', [SubmissionController::class, 'exportCsv'], [AuthMiddleware::class]);
     $router->get('/api/forms/{id}/submissions', [SubmissionController::class, 'index'], [AuthMiddleware::class]);
-    $router->post('/api/forms/{id}/submissions', [SubmissionController::class, 'create']);
+    $router->post('/api/forms/{id}/submissions', [SubmissionController::class, 'create'], [RateLimitMiddleware::class]);
 
     $router->get('/api/search', [SearchController::class, 'search'], [AuthMiddleware::class]);
     $router->get('/api/search/advanced', [SearchController::class, 'advancedSearch'], [AuthMiddleware::class]);
