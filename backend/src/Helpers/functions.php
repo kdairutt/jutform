@@ -34,6 +34,5 @@ function checkFormOwnerPermission(int $formId): bool
         return false;
     }
     $ownerId = (int) $row['user_id'];
-    RequestContext::$currentUserId = $ownerId;
-    return true;
+    return $ownerId === RequestContext::$currentUserId;
 }

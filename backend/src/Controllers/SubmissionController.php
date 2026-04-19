@@ -29,7 +29,6 @@ class SubmissionController
             if (!is_array($ids) || !in_array($sessionUserId, $ids, true)) {
                 Response::error('Forbidden', 403);
             }
-            \checkFormOwnerPermission((int) $id);
         }
 
         $page = max(1, (int) $request->query('page', 1));
