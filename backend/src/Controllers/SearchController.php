@@ -20,11 +20,15 @@ class SearchController
             Response::json(['results' => []]);
         }
         $pdo = Database::getInstance();
-        $like = '%' . $term . '%';
+        // FULLTEXT BOOLEAN MODE: append * for prefix matching so short terms
+        // like "for" still match "form". Leading-wildcard LIKE was doing a
+        // full scan of 3.8 M rows; MATCH AGAINST uses the ft index.
+        $ftTerm = '+' . implode('* +', preg_split('/\s+/', $term)) . '*';
         $stmt = $pdo->prepare(
-            'SELECT id, config_key, value FROM app_config WHERE value LIKE ? LIMIT 200'
+            'SELECT id, config_key, value FROM app_config
+             WHERE MATCH(value) AGAINST (? IN BOOLEAN MODE) LIMIT 200'
         );
-        $stmt->execute([$like]);
+        $stmt->execute([$ftTerm]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         Response::json(['results' => $rows]);
     }
