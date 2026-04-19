@@ -86,6 +86,7 @@ class SubmissionController
         }
         $rows = Submission::findByForm((int) $id, 5000, 0);
         $fh = fopen('php://temp', 'r+');
+        fwrite($fh, "\xEF\xBB\xBF"); // UTF-8 BOM — tells Excel/Numbers to read as UTF-8
         fputcsv($fh, ['id', 'submitted_at', 'data_json']);
         foreach ($rows as $r) {
             fputcsv($fh, [$r['id'], $r['submitted_at'], $r['data_json']]);
