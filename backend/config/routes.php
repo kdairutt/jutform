@@ -12,6 +12,7 @@ use JutForm\Controllers\UserController;
 use JutForm\Controllers\WebhookController;
 use JutForm\Core\Router;
 use JutForm\Middleware\AuthMiddleware;
+use JutForm\Middleware\CacheMiddleware;
 use JutForm\Middleware\RateLimitMiddleware;
 
 return static function (Router $router): void {
@@ -43,8 +44,8 @@ return static function (Router $router): void {
     $router->get('/internal/admin/config', [AdminController::class, 'internalConfig']);
     $router->get('/admin/logs', [AdminController::class, 'logs'], [AuthMiddleware::class]);
 
-    $router->get('/api/field-types', [ReferenceController::class, 'fieldTypes']);
-    $router->get('/api/countries', [ReferenceController::class, 'countries']);
+    $router->get('/api/field-types', [ReferenceController::class, 'fieldTypes'], [CacheMiddleware::class]);
+    $router->get('/api/countries', [ReferenceController::class, 'countries'], [CacheMiddleware::class]);
 
     $router->post('/api/forms/{id}/files', [FileUploadController::class, 'upload'], [AuthMiddleware::class]);
     $router->get('/api/files/{id}/download', [FileUploadController::class, 'download'], [AuthMiddleware::class]);
