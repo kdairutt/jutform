@@ -13,27 +13,34 @@ class EmailWorker
     public static function processBatch(): void
     {
         $pdo = Database::getInstance();
-        $utc = new DateTimeZone('UTC');
+        $now = gmdate('Y-m-d H:i:s');
         $stmt = $pdo->query(
-            "SELECT * FROM scheduled_emails WHERE status = 'pending' ORDER BY scheduled_at ASC LIMIT 25"
+            "SELECT id, recipient_email, subject, body FROM scheduled_emails
+             WHERE status = 'pending' AND scheduled_at <= '{$now}'
+             ORDER BY scheduled_at ASC LIMIT 25"
         );
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $claim = $pdo->prepare(
+            "UPDATE scheduled_emails SET status = 'processing' WHERE id = ? AND status = 'pending'"
+        );
+        $finish = $pdo->prepare(
+            'UPDATE scheduled_emails SET status = ?, sent_at = ? WHERE id = ?'
+        );
+
         foreach ($rows as $row) {
-            $scheduled = new DateTimeImmutable($row['scheduled_at'], $utc);
-            $now = new DateTimeImmutable('now', $utc);
-            if ($scheduled > $now) {
+            // Atomically claim the row; skip if another worker already took it.
+            $claim->execute([(int) $row['id']]);
+            if ($claim->rowCount() !== 1) {
                 continue;
             }
+
             $ok = SmtpMailer::send(
                 $row['recipient_email'],
                 (string) $row['subject'],
                 (string) $row['body']
             );
-            $upd = $pdo->prepare(
-                'UPDATE scheduled_emails SET status = ?, sent_at = ? WHERE id = ? AND status = ?'
-            );
-            $sentAt = gmdate('Y-m-d H:i:s');
-            $upd->execute([$ok ? 'sent' : 'failed', $sentAt, $row['id'], 'pending']);
+            $finish->execute([$ok ? 'sent' : 'failed', gmdate('Y-m-d H:i:s'), (int) $row['id']]);
         }
     }
 
