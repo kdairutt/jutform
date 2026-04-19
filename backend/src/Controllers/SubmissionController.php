@@ -31,6 +31,7 @@ class SubmissionController
             }
         }
 
+
         $page = max(1, (int) $request->query('page', 1));
         $limit = min(100, max(1, (int) $request->query('limit', 20)));
         $offset = ($page - 1) * $limit;

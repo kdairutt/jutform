@@ -23,19 +23,21 @@ class FormController
             Response::error('Unauthorized', 401);
         }
         $forms = Form::findByUser($uid);
+        $formIds = array_map(static fn($f) => (int) $f['id'], $forms);
+        $stats = Submission::statsForForms($formIds);
+        $owner = User::find($uid);
+        $ownerName = $owner['display_name'] ?? $owner['username'] ?? '';
         $out = [];
         foreach ($forms as $f) {
             $formId = (int) $f['id'];
-            $count = Submission::countByForm($formId);
-            $latest = Submission::getLatestSubmittedAt($formId);
-            $owner = User::find((int) $f['user_id']);
+            $s = $stats[$formId] ?? ['count' => 0, 'latest' => null];
             $out[] = [
                 'id' => $formId,
                 'title' => $f['title'],
                 'status' => $f['status'],
-                'submission_count' => $count,
-                'last_submission_at' => $latest,
-                'owner_display_name' => $owner['display_name'] ?? $owner['username'] ?? '',
+                'submission_count' => $s['count'],
+                'last_submission_at' => $s['latest'],
+                'owner_display_name' => $ownerName,
             ];
         }
         Response::json(['forms' => $out]);

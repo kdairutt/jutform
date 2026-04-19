@@ -12,6 +12,7 @@ class ExternalApiService
             'http' => [
                 'method' => 'GET',
                 'header' => "Accept: application/json\r\n",
+                'timeout' => 5,
             ],
         ]);
         $raw = @file_get_contents($url, false, $ctx);

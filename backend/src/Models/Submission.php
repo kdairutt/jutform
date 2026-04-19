@@ -49,6 +49,34 @@ class Submission
         return (int) $pdo->lastInsertId();
     }
 
+    /**
+     * Returns submission count and latest submitted_at for each form in one query.
+     * Result is keyed by form_id.
+     *
+     * @param int[] $formIds
+     * @return array<int, array{count: int, latest: string|null}>
+     */
+    public static function statsForForms(array $formIds): array
+    {
+        if ($formIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($formIds), '?'));
+        $stmt = Database::getInstance()->prepare(
+            "SELECT form_id, COUNT(*) AS cnt, MAX(submitted_at) AS latest
+             FROM submissions WHERE form_id IN ({$placeholders}) GROUP BY form_id"
+        );
+        $stmt->execute($formIds);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int) $row['form_id']] = [
+                'count' => (int) $row['cnt'],
+                'latest' => $row['latest'] !== null ? (string) $row['latest'] : null,
+            ];
+        }
+        return $out;
+    }
+
     public static function findForUserForms(int $userId, int $limit, int $offset): array
     {
         $stmt = Database::getInstance()->prepare(
