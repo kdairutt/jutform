@@ -20,15 +20,7 @@ class AdminController
             Response::error('Forbidden', 403);
         }
         $pdo = Database::getInstance();
-        $sql = 'SELECT SUM(
-            CAST(
-              SUBSTRING(
-                value,
-                LOCATE(\'"amount":\', value) + 9,
-                LOCATE(\',\', value, LOCATE(\'"amount":\', value)) - (LOCATE(\'"amount":\', value) + 9)
-              ) AS DECIMAL(10,2)
-            )
-          ) AS total
+        $sql = 'SELECT SUM(CAST(JSON_EXTRACT(value, \'$.amount\') AS DECIMAL(10,2))) AS total
           FROM app_config
           WHERE config_key REGEXP \'^payment_[0-9]+$\'';
         $row = $pdo->query($sql)->fetch(\PDO::FETCH_ASSOC);
