@@ -37,7 +37,7 @@ class FileUploadController
         $orig = $_FILES['file']['name'];
         $mime = $_FILES['file']['type'] ?? 'application/octet-stream';
         $size = (int) ($_FILES['file']['size'] ?? 0);
-        $target = self::uploadDir() . '/' . basename($orig);
+        $target = self::uploadDir() . '/' . uniqid('', true) . '_' . basename($orig);
         if (!move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
             Response::error('Upload failed', 500);
         }
