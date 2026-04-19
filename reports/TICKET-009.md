@@ -1,4 +1,4 @@
-# Investigation Report — TICKET: Site freezes during business hours
+# Investigation Report — TICKET-009: Site freezes during business hours
 
 ## Debugging Steps
 

@@ -1,4 +1,4 @@
-# Investigation Report — Duplicate confirmation emails
+# Investigation Report — TICKET-004: Duplicate confirmation emails
 
 ## Debugging Steps
 
