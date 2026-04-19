@@ -10,7 +10,7 @@ class Submission
     public static function findByForm(int $formId, int $limit, int $offset): array
     {
         $stmt = Database::getInstance()->prepare(
-            'SELECT * FROM submissions WHERE form_id = ? ORDER BY submitted_at DESC LIMIT ? OFFSET ?'
+            'SELECT * FROM submissions WHERE form_id = ? ORDER BY submitted_at DESC, id DESC LIMIT ? OFFSET ?'
         );
         $stmt->bindValue(1, $formId, PDO::PARAM_INT);
         $stmt->bindValue(2, $limit, PDO::PARAM_INT);
