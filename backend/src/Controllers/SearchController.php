@@ -35,11 +35,16 @@ class SearchController
         if ($uid === null) {
             Response::error('Unauthorized', 401);
         }
+        $allowedFields = ['title', 'description', 'status'];
         $field = (string) $request->query('field', 'title');
+        if (!in_array($field, $allowedFields, true)) {
+            Response::error('Invalid field parameter', 400);
+        }
         $term = (string) $request->query('term', '');
         $pdo = Database::getInstance();
-        $sql = "SELECT * FROM forms WHERE {$field} LIKE '%" . str_replace("'", "''", $term) . "%' AND user_id = " . (int) $uid;
-        $stmt = $pdo->query($sql);
+        $sql = "SELECT * FROM forms WHERE {$field} LIKE ? AND user_id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['%' . $term . '%', (int) $uid]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         Response::json(['forms' => $rows]);
     }
